@@ -5,7 +5,8 @@
 
   let currentFY = 2026;
   let currentTab = 'matrix';
-  const textCache = {};
+  let precomputedDiffs = null;
+  let diffsLoading = false;
 
   // === Initialization ===
   document.addEventListener('DOMContentLoaded', init);
@@ -467,8 +468,18 @@
 
     // Check if we have pre-computed diff data
     const diffKey = bill.id + ':' + stageAId + ':' + stageBId;
-    if (APPROPRIATIONS_DATA.diffs && APPROPRIATIONS_DATA.diffs[diffKey]) {
-      html += APPROPRIATIONS_DATA.diffs[diffKey];
+    if (precomputedDiffs && precomputedDiffs[diffKey]) {
+      html += '<h4 style="margin:1rem 0 0.5rem;color:var(--primary)">Text Comparison (changes highlighted)</h4>';
+      html += precomputedDiffs[diffKey];
+      container.innerHTML = html;
+      return;
+    }
+    // Try loading pre-computed diffs
+    else if (!precomputedDiffs && !diffsLoading) {
+      html += '<div id="diff-output"><div class="diff-loading"><div class="spinner"></div><br>Loading comparison data...</div></div>';
+      container.innerHTML = html;
+      loadPrecomputedDiffs().then(() => doCompare());
+      return;
     }
     // Check if both stages have HTM documents we can fetch and diff
     else {
@@ -487,6 +498,22 @@
     }
 
     container.innerHTML = html;
+  }
+
+  async function loadPrecomputedDiffs() {
+    if (precomputedDiffs || diffsLoading) return;
+    diffsLoading = true;
+    try {
+      const resp = await fetch('diffs.json');
+      if (resp.ok) {
+        precomputedDiffs = await resp.json();
+        console.log('Loaded ' + Object.keys(precomputedDiffs).length + ' pre-computed diffs');
+      }
+    } catch (e) {
+      console.warn('Could not load pre-computed diffs:', e);
+      precomputedDiffs = {};
+    }
+    diffsLoading = false;
   }
 
   function findHtmDoc(stage) {

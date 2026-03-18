@@ -5,6 +5,7 @@
 
   let currentFY = 2026;
   let currentTab = 'matrix';
+  const textCache = {};
 
   // === Initialization ===
   document.addEventListener('DOMContentLoaded', init);
@@ -13,6 +14,7 @@
     setupTabs();
     setupFYSelector();
     setupPopup();
+    setupExport();
     renderAll();
   }
 
@@ -39,6 +41,92 @@
       currentFY = parseInt(select.value);
       renderAll();
     });
+  }
+
+  // === CSV Export ===
+  function setupExport() {
+    document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+  }
+
+  function exportCSV() {
+    const fyData = APPROPRIATIONS_DATA.fiscalYears[currentFY];
+    if (!fyData) return;
+
+    const stages = APPROPRIATIONS_DATA.stageDefinitions;
+    const rows = [];
+
+    // Header
+    const header = ['Bill', 'Bill Number', 'Full Name'];
+    stages.forEach(s => {
+      header.push(s.label + ' (Status)');
+      header.push(s.label + ' (Date)');
+      header.push(s.label + ' (Vote)');
+      header.push(s.label + ' (URL)');
+    });
+    rows.push(header);
+
+    // Data rows
+    fyData.bills.forEach(bill => {
+      const row = [
+        bill.shortName,
+        bill.congressGovBillNumber || '',
+        bill.fullName
+      ];
+
+      stages.forEach(stageDef => {
+        const stage = bill.stages[stageDef.id];
+        if (!stage) {
+          row.push('Not Available', '', '', '');
+          return;
+        }
+
+        if (stage.available && stage.documents && stage.documents.length) {
+          row.push('Available');
+          row.push(stage.date || '');
+          row.push(stage.vote || '');
+          // First document URL
+          row.push(stage.documents[0].url || '');
+        } else if (stage.vote && stage.vote.includes('failed')) {
+          row.push('Failed');
+          row.push(stage.date || '');
+          row.push(stage.vote || '');
+          row.push('');
+        } else if (stage.note) {
+          row.push(stage.note);
+          row.push(stage.date || '');
+          row.push(stage.vote || '');
+          row.push('');
+        } else {
+          row.push('Not Available');
+          row.push('');
+          row.push('');
+          row.push('');
+        }
+      });
+
+      rows.push(row);
+    });
+
+    // Generate CSV
+    const csv = rows.map(row =>
+      row.map(cell => {
+        const val = String(cell).replace(/"/g, '""');
+        return val.includes(',') || val.includes('"') || val.includes('\n')
+          ? '"' + val + '"'
+          : val;
+      }).join(',')
+    ).join('\n');
+
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'appropriations_fy' + currentFY + '_tracker.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   // === Popup ===
@@ -281,7 +369,7 @@
     if (!fyData) return;
     const billSelect = document.getElementById('compare-bill');
     billSelect.innerHTML = fyData.bills.map(b =>
-      '<option value="' + esc(b.id) + '">' + esc(b.shortName) + '</option>'
+      '<option value="' + esc(b.id) + '">' + esc(b.shortName) + (b.congressGovBillNumber ? ' (' + b.congressGovBillNumber + ')' : '') + '</option>'
     ).join('');
     billSelect.removeEventListener('change', updateCompareStages);
     billSelect.addEventListener('change', updateCompareStages);
@@ -309,7 +397,6 @@
     document.getElementById('compare-stage-a').innerHTML = opts;
     document.getElementById('compare-stage-b').innerHTML = opts;
 
-    // Default to first and second available stages
     const selB = document.getElementById('compare-stage-b');
     if (availableStages.length > 1) {
       selB.selectedIndex = 1;
@@ -337,7 +424,16 @@
       return;
     }
 
-    let html = '<div class="compare-panel">';
+    if (stageAId === stageBId) {
+      container.innerHTML = '<div class="compare-empty">Select two different stages to compare.</div>';
+      return;
+    }
+
+    // Build the comparison view
+    let html = '';
+
+    // Document links panel
+    html += '<div class="compare-panel">';
 
     // Side A
     html += '<div class="compare-side">';
@@ -348,11 +444,9 @@
         html += '<li><a href="' + esc(doc.url) + '" target="_blank" rel="noopener">' + getDocIcon(doc.format) + ' ' + esc(doc.label) + '</a></li>';
       });
       html += '</ul>';
-    } else {
-      html += '<p style="color:var(--text-muted);font-size:0.85rem">No direct documents available at this stage.</p>';
     }
     if (stageA.vote) html += '<p style="font-weight:600;margin-top:0.5rem">Vote: ' + esc(stageA.vote) + '</p>';
-    if (stageA.summary) html += '<div class="popup-summary">' + esc(stageA.summary) + '</div>';
+    if (stageA.summary) html += '<div class="popup-summary" style="margin-top:0.5rem">' + esc(stageA.summary) + '</div>';
     html += '</div>';
 
     // Side B
@@ -364,33 +458,113 @@
         html += '<li><a href="' + esc(doc.url) + '" target="_blank" rel="noopener">' + getDocIcon(doc.format) + ' ' + esc(doc.label) + '</a></li>';
       });
       html += '</ul>';
-    } else {
-      html += '<p style="color:var(--text-muted);font-size:0.85rem">No direct documents available at this stage.</p>';
     }
     if (stageB.vote) html += '<p style="font-weight:600;margin-top:0.5rem">Vote: ' + esc(stageB.vote) + '</p>';
-    if (stageB.summary) html += '<div class="popup-summary">' + esc(stageB.summary) + '</div>';
+    if (stageB.summary) html += '<div class="popup-summary" style="margin-top:0.5rem">' + esc(stageB.summary) + '</div>';
     html += '</div>';
 
     html += '</div>';
 
-    // Comparison notes
-    if (stageAId !== stageBId) {
-      html += '<div style="padding:1rem;border-top:1px solid var(--border);background:var(--bg);font-size:0.85rem">';
-      html += '<strong>Comparison Notes:</strong> ';
+    // Check if we have pre-computed diff data
+    const diffKey = bill.id + ':' + stageAId + ':' + stageBId;
+    if (APPROPRIATIONS_DATA.diffs && APPROPRIATIONS_DATA.diffs[diffKey]) {
+      html += APPROPRIATIONS_DATA.diffs[diffKey];
+    }
+    // Check if both stages have HTM documents we can fetch and diff
+    else {
+      const htmA = findHtmDoc(stageA);
+      const htmB = findHtmDoc(stageB);
 
-      if (stageAId === 'subcommittee_bill' && stageADef && (stageBId === 'full_committee_bill' || stageBId === 'house_passed')) {
-        html += 'The full committee version may contain changes adopted through amendments during the markup process. ';
-        html += 'Download both bill texts and use a diff tool (such as <a href="https://www.diffchecker.com" target="_blank">DiffChecker</a>) to see specific changes.';
-      } else if (stageAId === 'full_committee_bill' && stageBId === 'house_passed') {
-        html += 'The House-passed version may include floor amendments adopted during debate. ';
-        html += 'Download both versions to compare using a diff tool.';
+      if (htmA && htmB) {
+        html += '<div id="diff-output"><div class="diff-loading"><div class="spinner"></div><br>Fetching bill text and computing diff...</div></div>';
+        container.innerHTML = html;
+        fetchAndDiff(htmA, htmB);
+        return;
       } else {
-        html += 'Download the bill text from both stages and use a diff tool (such as <a href="https://www.diffchecker.com" target="_blank">DiffChecker</a>) to identify specific changes between versions.';
+        // Fallback: show helpful guidance
+        html += renderComparisonGuidance(stageA, stageB, stageADef, stageBDef, bill);
       }
-      html += '</div>';
     }
 
     container.innerHTML = html;
+  }
+
+  function findHtmDoc(stage) {
+    if (!stage || !stage.documents) return null;
+    const htm = stage.documents.find(d => d.format === 'htm' || d.format === 'html');
+    return htm ? htm.url : null;
+  }
+
+  async function fetchAndDiff(urlA, urlB) {
+    const diffOutput = document.getElementById('diff-output');
+    if (!diffOutput) return;
+
+    try {
+      // Try fetching both texts - Congress.gov may or may not allow CORS
+      const [responseA, responseB] = await Promise.all([
+        fetch(urlA).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }),
+        fetch(urlB).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      ]);
+
+      const textA = TextDiff.htmlToText(responseA);
+      const textB = TextDiff.htmlToText(responseB);
+
+      const ops = TextDiff.diff(textA, textB);
+      const result = TextDiff.renderCompactDiff(ops);
+
+      diffOutput.innerHTML = '<h4 style="margin:1rem 0 0.5rem;color:var(--primary)">Text Comparison (changes only)</h4>' + result.html;
+
+    } catch (err) {
+      // CORS or network error - show fallback
+      diffOutput.innerHTML = '<div class="diff-fallback">' +
+        '<strong>Direct text comparison unavailable</strong> (cross-origin restriction). ' +
+        'To compare these versions:<br><br>' +
+        '1. Open both bill text links above in separate browser tabs<br>' +
+        '2. Copy the text from each<br>' +
+        '3. Paste into <a href="https://www.diffchecker.com" target="_blank">DiffChecker</a> or a similar tool<br><br>' +
+        'Or download the HTML files and use a local diff tool (e.g., <code>diff</code>, VS Code, or WinMerge).' +
+        '</div>';
+    }
+  }
+
+  function renderComparisonGuidance(stageA, stageB, stageADef, stageBDef, bill) {
+    let html = '<div style="padding:1rem;border-top:1px solid var(--border);background:var(--bg)">';
+    html += '<h4 style="margin-bottom:0.5rem;color:var(--primary)">How to Compare These Versions</h4>';
+
+    // Check if both have PDFs
+    const pdfA = stageA && stageA.documents ? stageA.documents.find(d => d.format === 'pdf' && d.type === 'bill_text') : null;
+    const pdfB = stageB && stageB.documents ? stageB.documents.find(d => d.format === 'pdf' && d.type === 'bill_text') : null;
+
+    if (pdfA && pdfB) {
+      html += '<p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem">';
+      html += 'Both versions are available as PDF. To compare:</p>';
+      html += '<ol style="font-size:0.85rem;color:var(--text-muted);padding-left:1.5rem">';
+      html += '<li>Download both PDF files using the links above</li>';
+      html += '<li>Use <a href="https://draftable.com/compare" target="_blank">Draftable</a> (online PDF comparison) or <a href="https://www.diffchecker.com/pdf-diff/" target="_blank">DiffChecker PDF</a></li>';
+      html += '<li>Upload Version A and Version B to see highlighted changes</li>';
+      html += '</ol>';
+    } else {
+      html += '<p style="font-size:0.85rem;color:var(--text-muted)">';
+      html += 'Download the documents from both stages using the links above, then use a diff tool to compare them.';
+      html += '</p>';
+    }
+
+    // Amendments context
+    if (stageADef.id === 'subcommittee_bill' && stageBDef.id === 'full_committee_bill') {
+      html += '<p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.75rem">';
+      html += '<strong>Note:</strong> Differences between subcommittee and full committee versions typically result from amendments adopted during the full committee markup.';
+      if (bill.stages.full_committee_amendments && bill.stages.full_committee_amendments.available) {
+        html += ' Check the <strong>Full Committee Amendments</strong> documents for details on what was changed.';
+      }
+      html += '</p>';
+    } else if (stageADef.id === 'full_committee_bill' && stageBDef.id === 'house_passed') {
+      html += '<p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.75rem">';
+      html += '<strong>Note:</strong> Differences between the committee version and floor-passed version result from floor amendments adopted during House debate.';
+      html += '</p>';
+    }
+
+    html += '</div>';
+    return html;
   }
 
   function renderCompare() {

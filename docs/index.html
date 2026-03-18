@@ -38,11 +38,16 @@
 
   <!-- Matrix View -->
   <section class="tab-content active" id="tab-matrix">
-    <div class="matrix-legend">
-      <span class="legend-item"><span class="legend-dot available"></span> Document Available</span>
-      <span class="legend-item"><span class="legend-dot partial"></span> Partial / Summary Only</span>
-      <span class="legend-item"><span class="legend-dot failed"></span> Failed / Blocked</span>
-      <span class="legend-item"><span class="legend-dot unavailable"></span> Not Yet Available</span>
+    <div class="matrix-toolbar">
+      <div class="matrix-legend">
+        <span class="legend-item"><span class="legend-dot available"></span> Document Available</span>
+        <span class="legend-item"><span class="legend-dot partial"></span> Partial / Summary Only</span>
+        <span class="legend-item"><span class="legend-dot failed"></span> Failed / Blocked</span>
+        <span class="legend-item"><span class="legend-dot unavailable"></span> Not Yet Available</span>
+      </div>
+      <div class="matrix-actions">
+        <button class="btn-export" id="btn-export-csv" title="Export as CSV spreadsheet">Export CSV</button>
+      </div>
     </div>
     <div class="matrix-container">
       <table class="matrix-table" id="matrix-table">
@@ -65,7 +70,7 @@
   <section class="tab-content" id="tab-compare">
     <div class="compare-intro">
       <h2>Compare Bill Versions</h2>
-      <p>Select a bill and two stages to compare their documents and see what changed between versions.</p>
+      <p>Select a bill and two stages to see what changed between versions. For bills with HTML text on Congress.gov, a line-by-line diff is generated automatically.</p>
     </div>
     <div class="compare-controls">
       <div class="compare-selector">
@@ -73,12 +78,12 @@
         <select id="compare-bill"></select>
       </div>
       <div class="compare-selector">
-        <label for="compare-stage-a">Version A:</label>
+        <label for="compare-stage-a">Version A (older):</label>
         <select id="compare-stage-a"></select>
       </div>
       <div class="compare-vs">vs.</div>
       <div class="compare-selector">
-        <label for="compare-stage-b">Version B:</label>
+        <label for="compare-stage-b">Version B (newer):</label>
         <select id="compare-stage-b"></select>
       </div>
       <button class="btn-compare" id="btn-compare">Compare</button>
@@ -148,6 +153,7 @@
   </footer>
 
   <script src="data.js"></script>
+  <script src="diff.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

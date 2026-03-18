@@ -88,13 +88,21 @@ I created a simulated "DC agent" - an AI persona modeled on Daniel Schuman - to 
 ## What's Working Well
 - Clean, professional interface that a Hill staffer would recognize as useful
 - Real text diffs for bill version comparison
-- Complete bicameral data for FY2025
-- Immediate access to FY2026 committee documents not yet on Congress.gov
+- Complete bicameral data for FY2025 (12 House + 11 Senate bills)
+- FY2026 shows full lifecycle: committee documents through enacted law (11 of 12 bills signed)
 - CSV export for sharing data with colleagues
+- Vote tallies displayed for both chambers on enacted legislation
+
+### 6. FY2026 Enacted Legislation (Late Discovery)
+
+**Obstacle**: My initial data showed FY2026 as only having House committee-stage documents. A background research agent discovered that FY2026 was actually enacted through three package bills signed into law between November 2025 and February 2026.
+
+**What I did**: Added enacted legislation data for all three packages: H.R. 5371 (Agriculture, Leg Branch, MilCon/VA - P.L. 119-37), H.R. 6938 (CJS, Energy/Water, Interior - P.L. 119-74), and H.R. 7148 (Defense, FSGG, Labor/HHS, State/ForeignOps, THUD - P.L. 119-75). DHS remains unfunded.
+
+**Result**: The FY2026 matrix now shows the complete lifecycle from subcommittee markup to enacted law, with vote tallies and links to enrolled bills/public laws.
 
 ## Known Limitations
 - Report language analysis (directive extraction, deadline tracking) is not yet implemented
-- FY2026 Senate data not yet available (markups haven't started)
 - Cross-chamber comparison (diffing House vs Senate versions of the same bill) could be added
 - No automated update mechanism (scripts must be run manually)
 

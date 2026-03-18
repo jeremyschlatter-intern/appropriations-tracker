@@ -12,11 +12,37 @@
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
+    mergeSenateData();
     setupTabs();
     setupFYSelector();
     setupPopup();
     setupExport();
     renderAll();
+  }
+
+  // Merge Senate data into FY2025 bills
+  function mergeSenateData() {
+    if (typeof SENATE_FY2025_DATA === 'undefined') return;
+    const fy2025 = APPROPRIATIONS_DATA.fiscalYears[2025];
+    if (!fy2025) return;
+
+    fy2025.bills.forEach(bill => {
+      const senateInfo = SENATE_FY2025_DATA[bill.id];
+      if (senateInfo) {
+        bill.senateBillNumber = senateInfo.senateBillNumber;
+        bill.senateUrl = senateInfo.senateUrl;
+        // Update senate_passed stage with real data
+        bill.stages.senate_passed = {
+          available: true,
+          date: senateInfo.senateReportedDate,
+          note: 'Reported to Senate (' + senateInfo.senateBillNumber + '), placed on calendar, no floor vote',
+          documents: senateInfo.documents
+        };
+      }
+    });
+
+    // Update status text
+    fy2025.status = 'House bills reported; 5 passed House; Senate reported 11 of 12 bills; none enacted as standalone';
   }
 
   // === Tab Navigation ===
@@ -244,8 +270,11 @@
       bodyHTML += '<tr>';
       bodyHTML += '<td>';
       bodyHTML += '<span>' + esc(bill.shortName) + '</span>';
-      if (bill.congressGovBillNumber) {
-        bodyHTML += '<span class="bill-number">' + esc(bill.congressGovBillNumber) + '</span>';
+      if (bill.congressGovBillNumber || bill.senateBillNumber) {
+        let nums = [];
+        if (bill.congressGovBillNumber) nums.push(bill.congressGovBillNumber);
+        if (bill.senateBillNumber) nums.push(bill.senateBillNumber);
+        bodyHTML += '<span class="bill-number">' + esc(nums.join(' / ')) + '</span>';
       }
       bodyHTML += '</td>';
 

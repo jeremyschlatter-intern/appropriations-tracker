@@ -13,6 +13,7 @@
 
   function init() {
     mergeSenateData();
+    mergeEnactedData();
     setupTabs();
     setupFYSelector();
     setupPopup();
@@ -43,6 +44,68 @@
 
     // Update status text
     fy2025.status = 'House bills reported; 5 passed House; Senate reported 11 of 12 bills; none enacted as standalone';
+  }
+
+  // Merge FY2026 enacted legislation data
+  function mergeEnactedData() {
+    if (typeof FY2026_ENACTED_DATA === 'undefined') return;
+    const fy2026 = APPROPRIATIONS_DATA.fiscalYears[2026];
+    if (!fy2026) return;
+
+    // Map bill IDs to their enacted package
+    const billToPackage = {};
+    FY2026_ENACTED_DATA.packages.forEach(pkg => {
+      pkg.bills.forEach(billId => {
+        billToPackage[billId] = pkg;
+      });
+    });
+
+    fy2026.bills.forEach(bill => {
+      const pkg = billToPackage[bill.id];
+      if (pkg) {
+        // Mark as enacted
+        const docs = [
+          { type: "bill_text", label: "Enrolled Bill (PDF)", url: pkg.enrolledPdf, format: "pdf" }
+        ];
+        if (pkg.publicLawPdf) {
+          docs.push({ type: "bill_text", label: pkg.publicLaw + " (PDF)", url: pkg.publicLawPdf, format: "pdf" });
+        }
+        docs.push({ type: "bill_text", label: pkg.billNumber + " on Congress.gov", url: pkg.url, format: "link" });
+
+        bill.stages.enacted = {
+          available: true,
+          date: pkg.signedDate,
+          vote: pkg.houseVote ? 'H: ' + pkg.houseVote + (pkg.senateVote ? ' / S: ' + pkg.senateVote : '') : '',
+          documents: docs,
+          note: pkg.note + ' (' + pkg.billNumber + ', ' + pkg.publicLaw + ')'
+        };
+
+        // Also mark house_passed and senate_passed based on package passage
+        if (!bill.stages.house_passed || !bill.stages.house_passed.available) {
+          bill.stages.house_passed = {
+            available: true,
+            date: pkg.signedDate,
+            vote: pkg.houseVote || '',
+            documents: [{ type: "bill_text", label: pkg.billNumber + " (package bill)", url: pkg.url, format: "link" }],
+            note: "Passed as part of " + pkg.billNumber
+          };
+        }
+        if (!bill.stages.senate_passed || !bill.stages.senate_passed.available) {
+          bill.stages.senate_passed = {
+            available: true,
+            date: pkg.signedDate,
+            vote: pkg.senateVote || '',
+            documents: [{ type: "bill_text", label: pkg.billNumber + " (package bill)", url: pkg.url, format: "link" }],
+            note: "Passed as part of " + pkg.billNumber
+          };
+        }
+      }
+    });
+
+    // Update status
+    const enacted = FY2026_ENACTED_DATA.packages.reduce((sum, p) => sum + p.bills.length, 0);
+    const unfunded = FY2026_ENACTED_DATA.unfunded.length;
+    fy2026.status = enacted + ' of 12 bills enacted through 3 package bills; ' + unfunded + ' (DHS) remains on continuing resolution';
   }
 
   // === Tab Navigation ===

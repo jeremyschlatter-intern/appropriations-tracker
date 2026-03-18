@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appropriations Bill Version Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="header-left">
+        <h1>Appropriations Bill Version Tracker</h1>
+        <p class="subtitle">Track every version of the 12 annual appropriations bills as they move through the legislative process</p>
+      </div>
+      <div class="header-right">
+        <div class="fy-selector">
+          <label for="fy-select">Fiscal Year:</label>
+          <select id="fy-select">
+            <option value="2026" selected>FY 2026 (119th Congress)</option>
+            <option value="2025">FY 2025 (118th Congress)</option>
+          </select>
+        </div>
+        <div class="last-updated" id="last-updated"></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="matrix">Bill Tracker</button>
+    <button class="tab-btn" data-tab="timeline">Timeline</button>
+    <button class="tab-btn" data-tab="compare">Compare Versions</button>
+    <button class="tab-btn" data-tab="about">About</button>
+  </nav>
+
+  <!-- Status banner -->
+  <div class="status-banner" id="status-banner"></div>
+
+  <!-- Matrix View -->
+  <section class="tab-content active" id="tab-matrix">
+    <div class="matrix-legend">
+      <span class="legend-item"><span class="legend-dot available"></span> Document Available</span>
+      <span class="legend-item"><span class="legend-dot partial"></span> Partial / Summary Only</span>
+      <span class="legend-item"><span class="legend-dot failed"></span> Failed / Blocked</span>
+      <span class="legend-item"><span class="legend-dot unavailable"></span> Not Yet Available</span>
+    </div>
+    <div class="matrix-container">
+      <table class="matrix-table" id="matrix-table">
+        <thead id="matrix-head"></thead>
+        <tbody id="matrix-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Timeline View -->
+  <section class="tab-content" id="tab-timeline">
+    <div class="timeline-controls">
+      <label for="timeline-bill-select">Select Bill:</label>
+      <select id="timeline-bill-select"></select>
+    </div>
+    <div class="timeline-container" id="timeline-container"></div>
+  </section>
+
+  <!-- Compare View -->
+  <section class="tab-content" id="tab-compare">
+    <div class="compare-intro">
+      <h2>Compare Bill Versions</h2>
+      <p>Select a bill and two stages to compare their documents and see what changed between versions.</p>
+    </div>
+    <div class="compare-controls">
+      <div class="compare-selector">
+        <label for="compare-bill">Bill:</label>
+        <select id="compare-bill"></select>
+      </div>
+      <div class="compare-selector">
+        <label for="compare-stage-a">Version A:</label>
+        <select id="compare-stage-a"></select>
+      </div>
+      <div class="compare-vs">vs.</div>
+      <div class="compare-selector">
+        <label for="compare-stage-b">Version B:</label>
+        <select id="compare-stage-b"></select>
+      </div>
+      <button class="btn-compare" id="btn-compare">Compare</button>
+    </div>
+    <div class="compare-results" id="compare-results"></div>
+  </section>
+
+  <!-- About -->
+  <section class="tab-content" id="tab-about">
+    <div class="about-content">
+      <h2>About This Tool</h2>
+      <p>The Appropriations Bill Version Tracker solves a real problem for congressional staff, advocates, and researchers: <strong>appropriations committees publish bill text and committee reports on their websites well before that information appears on Congress.gov.</strong></p>
+
+      <p>This tool aggregates documents from multiple sources into a single view, making it easy to:</p>
+      <ul>
+        <li>Find the latest version of any appropriations bill at any stage</li>
+        <li>Track which bills have moved through which stages</li>
+        <li>Access committee reports, amendments, and roll call votes</li>
+        <li>Compare bill versions across stages (subcommittee vs. full committee, House vs. Senate)</li>
+        <li>See the complete picture for the current and previous fiscal years</li>
+      </ul>
+
+      <h3>Data Sources</h3>
+      <table class="about-sources">
+        <tr>
+          <td><strong>Committee-Level Documents</strong></td>
+          <td>House Appropriations Committee (<a href="https://appropriations.house.gov/schedule/markups" target="_blank">appropriations.house.gov</a>) and <a href="https://docs.house.gov" target="_blank">docs.house.gov</a></td>
+        </tr>
+        <tr>
+          <td><strong>Introduced/Reported Bills</strong></td>
+          <td><a href="https://www.congress.gov" target="_blank">Congress.gov</a> and the <a href="https://api.congress.gov" target="_blank">Congress.gov API</a></td>
+        </tr>
+        <tr>
+          <td><strong>Committee Reports</strong></td>
+          <td>Congress.gov Congressional Reports and committee websites</td>
+        </tr>
+      </table>
+
+      <h3>The 12 Annual Appropriations Bills</h3>
+      <p>Each year, Congress must pass 12 appropriations bills to fund the federal government:</p>
+      <ol class="bills-list" id="about-bills-list"></ol>
+
+      <h3>Legislative Process Stages</h3>
+      <div class="process-flow" id="process-flow"></div>
+
+      <h3>Why This Matters</h3>
+      <p>The gap between when committee documents are published and when they appear on Congress.gov can be days or weeks. During active markup season, congressional staff, lobbyists, and advocacy organizations need immediate access to bill text and report language to do their jobs effectively. This tracker bridges that gap.</p>
+
+      <p class="about-note">This tool was built to demonstrate how AI can solve real problems for people working in and around Congress. Data is sourced from public government websites and the Congress.gov API.</p>
+    </div>
+  </section>
+
+  <!-- Document popup -->
+  <div class="popup-overlay" id="popup-overlay">
+    <div class="popup" id="popup">
+      <div class="popup-header">
+        <h3 id="popup-title"></h3>
+        <button class="popup-close" id="popup-close">&times;</button>
+      </div>
+      <div class="popup-body" id="popup-body"></div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Data sourced from <a href="https://appropriations.house.gov" target="_blank">House Appropriations Committee</a>, <a href="https://docs.house.gov" target="_blank">docs.house.gov</a>, and the <a href="https://api.congress.gov" target="_blank">Congress.gov API</a>.</p>
+    <p>Last data update: <span id="footer-updated"></span></p>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

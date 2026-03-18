@@ -283,12 +283,14 @@ header h1 {
 }
 
 .cell-date {
+  display: block;
   font-size: 0.65rem;
   color: var(--text-muted);
   margin-top: 0.15rem;
 }
 
 .cell-vote {
+  display: block;
   font-size: 0.6rem;
   font-weight: 600;
   color: var(--green);
@@ -296,9 +298,12 @@ header h1 {
 }
 
 .cell-note {
+  display: block;
   font-size: 0.6rem;
   color: var(--gray);
   font-style: italic;
+  max-width: 100px;
+  line-height: 1.3;
 }
 
 .bill-number {
